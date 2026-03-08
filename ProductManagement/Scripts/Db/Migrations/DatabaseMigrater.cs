@@ -9,7 +9,7 @@ public static class DatabaseMigrater
     public static void Migrate(string connection)
     {
         var upgrader = DeployChanges.To
-            .SqlDatabase(connection)
+            .PostgresqlDatabase(connection)
             .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
             .LogToConsole()
             .Build();

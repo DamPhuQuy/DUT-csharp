@@ -19,7 +19,8 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <EmbeddedResource Include="Scripts\Db\Migrations\*.sql"></EmbeddedResource>
-    <PackageReference Include="dbup" Version="5.0.41" />
+    <PackageReference Include="dbup-postgresql" Version="6.0.3" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
   </ItemGroup>
 </Project>

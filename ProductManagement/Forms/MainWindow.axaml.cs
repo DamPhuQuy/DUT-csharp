@@ -1,67 +1,157 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ProductManagement.Entities;
+using ProductManagement.Repositories;
+using ProductManagement.Services;
 
 namespace ProductManagement.Forms;
 
 public partial class MainWindow : Window
 {
-    private readonly List<Product> _products =
-    [
-        new Product { Id = 1, Name = "Bóng đèn điện quang", Price = 50 },
-        new Product { Id = 2, Name = "Thuốc diệt mối",      Price = 75 },
-        new Product { Id = 3, Name = "Thuốc kiến",          Price = 35 },
-        new Product { Id = 4, Name = "Đèn tròn",            Price = 23 },
-        new Product { Id = 6, Name = "Kéo cắt sắt",         Price = 45 },
-        new Product { Id = 7, Name = "Bóng đèn đường",      Price = 12 },
-    ];
+    private readonly ProductService _productService = null!;
+    private readonly CategoryService _categoryService = null!;
+    private List<Category> _categories = [];
 
-    public MainWindow()
+    // Parameterless constructor for XAML designer
+    public MainWindow() : this("") { }
+
+    public MainWindow(string connectionString)
     {
         InitializeComponent();
 
-        BtnCount.Click        += BtnCount_Click;
-        BtnViewDetail.Click   += BtnViewDetail_Click;
-        BtnViewDetailC2.Click += BtnViewDetailC2_Click;
-        BtnShowList.Click     += BtnShowList_Click;
+        if (string.IsNullOrEmpty(connectionString)) return;
+
+        var productRepo  = new ProductRepository(connectionString);
+        var categoryRepo = new CategoryRepository(connectionString);
+        _productService  = new ProductService(productRepo);
+        _categoryService = new CategoryService(categoryRepo);
+
+        BtnAdd.Click    += BtnAdd_Click;
+        BtnUpdate.Click += BtnUpdate_Click;
+        BtnDelete.Click += BtnDelete_Click;
+        BtnClear.Click  += BtnClear_Click;
+        BtnSearch.Click += BtnSearch_Click;
+        BtnRefresh.Click += BtnRefresh_Click;
+        ProductGrid.SelectionChanged += (_, _) => PopulateFormFromSelection();
+
+        LoadCategories();
+        CmbFilterCategory.SelectionChanged += (_, _) => LoadProducts();
+        LoadProducts();
     }
 
-    private void BtnCount_Click(object? sender, RoutedEventArgs e)
+    private void LoadCategories()
     {
-        TxtCountResult.Text = $"Có {_products.Count} sản phẩm!";
+        _categories = _categoryService.GetAll();
+
+        var filterItems = new List<Category> { new() { Id = 0, Name = "-- Tất cả --" } };
+        filterItems.AddRange(_categories);
+        CmbFilterCategory.ItemsSource = filterItems;
+        CmbFilterCategory.SelectedIndex = 0;
+
+        CmbCategory.ItemsSource = _categories;
+        if (_categories.Count > 0) CmbCategory.SelectedIndex = 0;
     }
 
-    private void BtnViewDetail_Click(object? sender, RoutedEventArgs e)
+    private void LoadProducts()
     {
-        if (!int.TryParse(TxtSearchId.Text, out int id)) return;
+        var products   = _productService.GetAll();
+        var search     = TxtSearch.Text?.Trim() ?? "";
+        var filterCat  = CmbFilterCategory.SelectedItem as Category;
 
-        var p = _products.Find(x => x.Id == id);
-        if (p is not null)
+        var rows = products
+            .Where(p => filterCat is null || filterCat.Id == 0 || p.CategoryId == filterCat.Id)
+            .Where(p => string.IsNullOrEmpty(search)
+                        || p.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
+            .Select(p => new ProductRow(
+                p.Id, p.Name, p.Price,
+                _categories.FirstOrDefault(c => c.Id == p.CategoryId)?.Name ?? ""))
+            .ToList();
+
+        ProductGrid.ItemsSource = rows;
+    }
+
+    private void PopulateFormFromSelection()
+    {
+        if (ProductGrid.SelectedItem is not ProductRow row) return;
+        TxtId.Text    = row.Id.ToString();
+        TxtName.Text  = row.Name;
+        TxtPrice.Text = row.Price.ToString();
+        CmbCategory.SelectedItem = _categories.FirstOrDefault(c => c.Name == row.CategoryName);
+        TxtStatus.Text = "";
+    }
+
+    private void BtnAdd_Click(object? sender, RoutedEventArgs e)
+    {
+        try
         {
-            TxtId.Text    = p.Id.ToString();
-            TxtName.Text  = p.Name;
-            TxtPrice.Text = p.Price.ToString();
+            var product = BuildProductFromForm();
+            _productService.Add(product);
+            ClearForm();
+            LoadProducts();
+            TxtStatus.Text = "Thêm sản phẩm thành công!";
         }
-        else
-        {
-            TxtId.Text    = "";
-            TxtName.Text  = "Không tìm thấy!";
-            TxtPrice.Text = "";
-        }
+        catch (Exception ex) { TxtStatus.Text = ex.Message; }
     }
 
-    private void BtnViewDetailC2_Click(object? sender, RoutedEventArgs e)
+    private void BtnUpdate_Click(object? sender, RoutedEventArgs e)
     {
-        // C2: Show in a message box style using window title
-        if (!int.TryParse(TxtSearchId.Text, out int id)) return;
-        var p = _products.Find(x => x.Id == id);
-        if (p is not null)
-            Title = $"SP #{p.Id}: {p.Name} – {p.Price:C0}";
-        else
-            Title = "Không tìm thấy sản phẩm!";
+        try
+        {
+            if (!int.TryParse(TxtId.Text, out int id) || id == 0)
+            {
+                TxtStatus.Text = "Chọn sản phẩm cần sửa từ danh sách.";
+                return;
+            }
+            var product = BuildProductFromForm();
+            product.Id = id;
+            _productService.Update(product);
+            ClearForm();
+            LoadProducts();
+            TxtStatus.Text = "Cập nhật thành công!";
+        }
+        catch (Exception ex) { TxtStatus.Text = ex.Message; }
     }
 
-    private void BtnShowList_Click(object? sender, RoutedEventArgs e)
-        => ProductGrid.ItemsSource = _products;
+    private void BtnDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!int.TryParse(TxtId.Text, out int id) || id == 0)
+        {
+            TxtStatus.Text = "Chọn sản phẩm cần xóa từ danh sách.";
+            return;
+        }
+        _productService.Delete(id);
+        ClearForm();
+        LoadProducts();
+        TxtStatus.Text = "Đã xóa sản phẩm!";
+    }
+
+    private void BtnClear_Click(object? sender, RoutedEventArgs e)   => ClearForm();
+    private void BtnSearch_Click(object? sender, RoutedEventArgs e)  => LoadProducts();
+    private void BtnRefresh_Click(object? sender, RoutedEventArgs e)
+    {
+        TxtSearch.Text = "";
+        CmbFilterCategory.SelectedIndex = 0;
+        LoadProducts();
+    }
+
+    private Product BuildProductFromForm()
+    {
+        if (!double.TryParse(TxtPrice.Text, out double price))
+            throw new ArgumentException("Giá không hợp lệ.");
+        var category = CmbCategory.SelectedItem as Category
+            ?? throw new ArgumentException("Chọn danh mục.");
+        return new Product { Name = TxtName.Text ?? "", Price = price, CategoryId = category.Id };
+    }
+
+    private void ClearForm()
+    {
+        TxtId.Text = TxtName.Text = TxtPrice.Text = TxtStatus.Text = "";
+        if (_categories.Count > 0) CmbCategory.SelectedIndex = 0;
+        ProductGrid.SelectedItem = null;
+    }
+
+    private record ProductRow(int Id, string Name, double Price, string CategoryName);
 }
