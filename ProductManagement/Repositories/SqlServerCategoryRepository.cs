@@ -1,14 +1,14 @@
 using System.Collections.Generic;
-using Npgsql;
+using Microsoft.Data.SqlClient;
 using ProductManagement.Entities;
 
 namespace ProductManagement.Repositories;
 
-public class CategoryRepository
+public class SqlServerCategoryRepository : IRepository<Category>
 {
     private readonly string _connectionString;
 
-    public CategoryRepository(string connectionString)
+    public SqlServerCategoryRepository(string connectionString)
     {
         _connectionString = connectionString;
     }
@@ -16,9 +16,9 @@ public class CategoryRepository
     public List<Category> GetAll()
     {
         var categories = new List<Category>();
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new SqlConnection(_connectionString);
         conn.Open();
-        using var cmd = new NpgsqlCommand("SELECT id, name FROM categories", conn);
+        using var cmd = new SqlCommand("SELECT id, name FROM categories", conn);
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
@@ -33,9 +33,9 @@ public class CategoryRepository
 
     public Category? GetById(int id)
     {
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new SqlConnection(_connectionString);
         conn.Open();
-        using var cmd = new NpgsqlCommand("SELECT id, name FROM categories WHERE id = @id", conn);
+        using var cmd = new SqlCommand("SELECT id, name FROM categories WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
@@ -51,18 +51,18 @@ public class CategoryRepository
 
     public void Add(Category category)
     {
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new SqlConnection(_connectionString);
         conn.Open();
-        using var cmd = new NpgsqlCommand("INSERT INTO categories (name) VALUES (@name)", conn);
+        using var cmd = new SqlCommand("INSERT INTO categories (name) VALUES (@name)", conn);
         cmd.Parameters.AddWithValue("name", category.Name);
         cmd.ExecuteNonQuery();
     }
 
     public void Update(Category category)
     {
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new SqlConnection(_connectionString);
         conn.Open();
-        using var cmd = new NpgsqlCommand("UPDATE categories SET name = @name WHERE id = @id", conn);
+        using var cmd = new SqlCommand("UPDATE categories SET name = @name WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("name", category.Name);
         cmd.Parameters.AddWithValue("id", category.Id);
         cmd.ExecuteNonQuery();
@@ -70,9 +70,9 @@ public class CategoryRepository
 
     public void Delete(int id)
     {
-        using var conn = new NpgsqlConnection(_connectionString);
+        using var conn = new SqlConnection(_connectionString);
         conn.Open();
-        using var cmd = new NpgsqlCommand("DELETE FROM categories WHERE id = @id", conn);
+        using var cmd = new SqlCommand("DELETE FROM categories WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         cmd.ExecuteNonQuery();
     }

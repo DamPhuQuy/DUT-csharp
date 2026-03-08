@@ -24,10 +24,8 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrEmpty(connectionString)) return;
 
-        var productRepo  = new ProductRepository(connectionString);
-        var categoryRepo = new CategoryRepository(connectionString);
-        _productService  = new ProductService(productRepo);
-        _categoryService = new CategoryService(categoryRepo);
+        _productService  = new ProductService(new SqlServerProductRepository(connectionString));
+        _categoryService = new CategoryService(new SqlServerCategoryRepository(connectionString));
 
         BtnAdd.Click    += BtnAdd_Click;
         BtnUpdate.Click += BtnUpdate_Click;

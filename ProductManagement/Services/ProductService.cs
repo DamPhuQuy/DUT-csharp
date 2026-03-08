@@ -1,23 +1,12 @@
 using System;
-using System.Collections.Generic;
 using ProductManagement.Entities;
 using ProductManagement.Repositories;
 
 namespace ProductManagement.Services;
 
-public class ProductService
+public class ProductService(IRepository<Product> productRepository) : ServiceBase<Product>(productRepository)
 {
-    private readonly ProductRepository _productRepository;
-
-    public ProductService(ProductRepository productRepository)
-    {
-        _productRepository = productRepository;
-    }
-
-    public List<Product> GetAll() => _productRepository.GetAll();
-
-    public Product? GetById(int id) => _productRepository.GetById(id);
-
+    override
     public void Add(Product product)
     {
         if (string.IsNullOrWhiteSpace(product.Name))
@@ -25,9 +14,10 @@ public class ProductService
         if (product.Price < 0)
             throw new ArgumentException("Product price cannot be negative.");
 
-        _productRepository.Add(product);
+        _repository.Add(product);
     }
 
+    override
     public void Update(Product product)
     {
         if (string.IsNullOrWhiteSpace(product.Name))
@@ -35,8 +25,9 @@ public class ProductService
         if (product.Price < 0)
             throw new ArgumentException("Product price cannot be negative.");
 
-        _productRepository.Update(product);
+        _repository.Update(product);
     }
 
-    public void Delete(int id) => _productRepository.Delete(id);
+    override
+    public void Delete(int id) => _repository.Delete(id);
 }

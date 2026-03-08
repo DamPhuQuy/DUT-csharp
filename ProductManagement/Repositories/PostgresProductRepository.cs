@@ -4,15 +4,11 @@ using ProductManagement.Entities;
 
 namespace ProductManagement.Repositories;
 
-public class ProductRepository
+public class PostgresProductRepository : IRepository<Product>
 {
     private readonly string _connectionString;
 
-    public ProductRepository(string connectionString)
-    {
-        _connectionString = connectionString;
-    }
-
+    public PostgresProductRepository(string connectionString) => _connectionString = connectionString;
     public List<Product> GetAll()
     {
         var products = new List<Product>();
