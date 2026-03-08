@@ -20,11 +20,11 @@ public static class DatabaseMigrater
 
         if (!result.Successful)
         {
-            Console.WriteLine("Database migration failed: {connection}");
+            Console.WriteLine("Database migration failed: " + connection);
             Console.WriteLine(result.Error);
             throw result.Error;
         }
 
-        Console.WriteLine("Connecting with: {connection}");
+        Console.WriteLine("Connecting with: " + connection);
     }
 }
