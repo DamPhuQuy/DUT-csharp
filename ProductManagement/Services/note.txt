@@ -1,1 +1,1 @@
-service không biết database nào đang dùng, nên implement service với interface
+service không biết database nào đang dùng, chỉ biết có một interface repository của một database nào đó được sử dụng thông qua under the hood của repo. Repository mới là thứ biết kết nối với database nào.
