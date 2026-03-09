@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Microsoft.EntityFrameworkCore;
+using ProductManagement.Data;
+using ProductManagement.DTOs;
 using ProductManagement.Entities;
 using ProductManagement.Repositories;
 using ProductManagement.Services;
@@ -13,7 +16,7 @@ public partial class MainWindow : Window
 {
     private readonly ProductService _productService = null!;
     private readonly CategoryService _categoryService = null!;
-    private List<Category> _categories = [];
+    private List<CategoryDto> _categories = [];
 
     // Parameterless constructor for XAML designer
     public MainWindow() : this("") { }
@@ -24,8 +27,13 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrEmpty(connectionString)) return;
 
-        _productService  = new ProductService(new SqlServerProductRepository(connectionString));
-        _categoryService = new CategoryService(new SqlServerCategoryRepository(connectionString));
+        var dbContext = new AppDbContext(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(connectionString)
+                .Options);
+
+        _productService  = new ProductService(new EFProductRepository(dbContext));
+        _categoryService = new CategoryService(new EFCategoryRepository(dbContext));
 
         BtnAdd.Click    += BtnAdd_Click;
         BtnUpdate.Click += BtnUpdate_Click;
@@ -33,6 +41,7 @@ public partial class MainWindow : Window
         BtnClear.Click  += BtnClear_Click;
         BtnSearch.Click += BtnSearch_Click;
         BtnRefresh.Click += BtnRefresh_Click;
+        BtnCategories.Click += BtnCategories_Click;
         ProductGrid.SelectionChanged += (_, _) => PopulateFormFromSelection();
 
         LoadCategories();
@@ -42,9 +51,12 @@ public partial class MainWindow : Window
 
     private void LoadCategories()
     {
-        _categories = _categoryService.GetAll();
+        _categories = _categoryService
+            .GetAll()
+            .Select(c => c.ToCategoryDto())
+            .ToList();
 
-        var filterItems = new List<Category> { new() { Id = 0, Name = "-- Tất cả --" } };
+        var filterItems = new List<CategoryDto> { new(0, "-- Tất cả --") };
         filterItems.AddRange(_categories);
         CmbFilterCategory.ItemsSource = filterItems;
         CmbFilterCategory.SelectedIndex = 0;
@@ -57,14 +69,13 @@ public partial class MainWindow : Window
     {
         var products   = _productService.GetAll();
         var search     = TxtSearch.Text?.Trim() ?? "";
-        var filterCat  = CmbFilterCategory.SelectedItem as Category;
+        var filterCat  = CmbFilterCategory.SelectedItem as CategoryDto;
 
         var rows = products
             .Where(p => filterCat is null || filterCat.Id == 0 || p.CategoryId == filterCat.Id)
             .Where(p => string.IsNullOrEmpty(search)
                         || p.Name.Contains(search, StringComparison.OrdinalIgnoreCase))
-            .Select(p => new ProductRow(
-                p.Id, p.Name, p.Price,
+            .Select(p => p.ToListDto(
                 _categories.FirstOrDefault(c => c.Id == p.CategoryId)?.Name ?? ""))
             .ToList();
 
@@ -73,7 +84,7 @@ public partial class MainWindow : Window
 
     private void PopulateFormFromSelection()
     {
-        if (ProductGrid.SelectedItem is not ProductRow row) return;
+        if (ProductGrid.SelectedItem is not ProductListDto row) return;
         TxtId.Text    = row.Id.ToString();
         TxtName.Text  = row.Name;
         TxtPrice.Text = row.Price.ToString();
@@ -128,6 +139,14 @@ public partial class MainWindow : Window
 
     private void BtnClear_Click(object? sender, RoutedEventArgs e)   => ClearForm();
     private void BtnSearch_Click(object? sender, RoutedEventArgs e)  => LoadProducts();
+    private void BtnCategories_Click(object? sender, RoutedEventArgs e)
+    {
+        var win = new CategoryWindow(_categoryService) { ShowInTaskbar = false };
+        win.ShowDialog(this);
+        // Reload categories and products in case categories changed
+        LoadCategories();
+        LoadProducts();
+    }
     private void BtnRefresh_Click(object? sender, RoutedEventArgs e)
     {
         TxtSearch.Text = "";
@@ -139,9 +158,14 @@ public partial class MainWindow : Window
     {
         if (!double.TryParse(TxtPrice.Text, out double price))
             throw new ArgumentException("Giá không hợp lệ.");
-        var category = CmbCategory.SelectedItem as Category
+        var category = CmbCategory.SelectedItem as CategoryDto
             ?? throw new ArgumentException("Chọn danh mục.");
-        return new Product { Name = TxtName.Text ?? "", Price = price, CategoryId = category.Id };
+        return new ProductFormDto
+        {
+            Name = TxtName.Text ?? "",
+            Price = price,
+            CategoryId = category.Id
+        }.ToEntity();
     }
 
     private void ClearForm()
@@ -150,6 +174,4 @@ public partial class MainWindow : Window
         if (_categories.Count > 0) CmbCategory.SelectedIndex = 0;
         ProductGrid.SelectedItem = null;
     }
-
-    private record ProductRow(int Id, string Name, double Price, string CategoryName);
 }

@@ -46,7 +46,7 @@
                     </ComboBox>
                 </Grid>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center"
                             Spacing="6" Margin="0,8,0,0">
                     <Button Name="BtnAdd"    Content="Thêm"      Padding="14,6"
                             Background="#28A745" Foreground="White"/>
@@ -78,6 +78,8 @@
                 <TextBox Name="TxtSearch" Width="180" Watermark="Tìm tên sản phẩm..."/>
                 <Button Name="BtnSearch"  Content="Tìm"     Padding="10,5"/>
                 <Button Name="BtnRefresh" Content="Làm mới" Padding="10,5"/>
+                <Button Name="BtnCategories" Content="Quản lý danh mục"
+                        Padding="10,5" Background="#6C757D" Foreground="White"/>
             </StackPanel>
 
             <!-- DataGrid -->
