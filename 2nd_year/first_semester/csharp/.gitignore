@@ -1,0 +1,6 @@
+﻿.env
+.vscode/
+.idea/
+/ProductManagement/bin
+/ProductManagement/obj
+
