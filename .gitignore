@@ -1,3 +1,4 @@
+*.pcapng
 ﻿.env
 .vscode/
 .idea/
